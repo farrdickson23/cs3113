@@ -1,7 +1,0 @@
-// vibe coding as in vibing while im coding 
-
-to do an infinity::
-
-y = (a * sqrt(2) * cos(t) * sin(t))/( (sin(t))^2 * + 1);
-
-x = (a * sqrt(2) * cos(t))/((sin(t))^2 * + 1)

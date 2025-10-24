@@ -6,7 +6,7 @@
 
 //enum SpriteState    { sFIRE, GOOD, BAD , RIDGE }; // all different animations
 //enum EntityStatus { ACTIVE, INACTIVE              }; //i dont think i need this
-enum EntityType { PLAYER, GOAL, RIDGE, FIRE };
+enum EntityType { PLAYER, GOAL, RIDGE, FIRE , ASTEROID};
 enum PlayerState {GOOD, BAD};
 
 class Entity
@@ -32,8 +32,10 @@ private:
 
     int mCurrentFrameIndex = 0;
     float mAnimationTime = 0.0f;
+    float fuel = 100.f;
 
     bool mIsJumping = false;
+    bool mWasJumping = false;
     bool isDone = false; // stop game condition
     float mJumpingPower = 0.0f;
 
@@ -44,10 +46,13 @@ private:
     bool mIsCollidingBottom = false;
     bool mIsCollidingRight  = false;
     bool mIsCollidingLeft   = false;
+    bool isGone = false;
 
     //EntityStatus mEntityStatus = ACTIVE;
     //EntityType   mEntityType;
 
+    //bool isAlive() const { if (!isGone )
+                            
     bool isColliding(Entity *other) const;
     void checkCollisionY(Entity *collidableEntities, int collisionCheckCount);
     void checkCollisionX(Entity *collidableEntities, int collisionCheckCount);
@@ -82,10 +87,15 @@ public:
 
     void update(float deltaTime, Entity *collidableEntities, int collisionCheckCount,
         Entity* blocks, int blockCount);
+
     void render();
+
     void normaliseMovement() { Normalise(&mMovement); }
 
-    void jump()       { mIsJumping = true;  }
+    void jump() {
+        mIsJumping = true;
+        fuel -= 0.025f;
+    }
     //void activate()   { mEntityStatus  = ACTIVE;   }
     //void deactivate() { mEntityStatus  = INACTIVE; }
     void displayCollider();
@@ -98,7 +108,6 @@ public:
     void turnRight() { mAngle += 1; }
 
     void resetMovement() { mMovement = { 0.0f, 0.0f }; }
-    bool     getDoneStat()              const { return isDone; }
     Vector2     getPosition()              const { return mPosition;              }
     Vector2     getMovement()              const { return mMovement;              }
     Vector2     getVelocity()              const { return mVelocity;              }
@@ -114,9 +123,13 @@ public:
     bool        isJumping()                const { return mIsJumping;             }
     int         getSpeed()                 const { return mSpeed;                 }
     float       getAngle()                 const { return mAngle;                 }
+    float       getFuel()                  const { return fuel;                   }
     
     bool isCollidingTop()    const { return mIsCollidingTop;    }
     bool isCollidingBottom() const { return mIsCollidingBottom; }
+    bool checkDone() const { return isDone; }
+    bool wasJumping() const { return mWasJumping; }
+    bool flewAway() const { return isGone; }
 
     //std::map<SpriteState, std::vector<int>> getAnimationAtlas() const { return mAnimationAtlas; }
 
@@ -144,6 +157,7 @@ public:
         { mAngle = newAngle;                       }
     void setEntityType(EntityType entityType)
         { mEntityType = entityType;                }
+    void updateFire(Entity* alienShip);
 };
 
 #endif // ENTITY_CPP

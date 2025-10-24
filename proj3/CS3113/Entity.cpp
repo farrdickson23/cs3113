@@ -76,40 +76,48 @@ void Entity::checkCollisionY(Entity *collidableEntities, int collisionCheckCount
             // STEP 2: Calculate the distance between its centre and our centre
             //         and use that to calculate the amount of overlap between
             //         both bodies.
-            float yDistance = fabs(mPosition.y - collidableEntity->mPosition.y);
-	    printf("yDistance: %.2f\n", yDistance);
-            float yOverlap  = fabs(yDistance - fmaxf(0.0f ,(mColliderDimensions.y / 2.0f)) - fmaxf(0.0f,(collidableEntity->mColliderDimensions.y / 2.0f)));
+            //float yDistance = fabs(mPosition.y - collidableEntity->mPosition.y);
+	    //printf("yDistance: %.2f\n", yDistance);
+            //float yOverlap  = fabs(yDistance - fmaxf(0.0f ,(mColliderDimensions.y / 2.0f)) - fmaxf(0.0f,(collidableEntity->mColliderDimensions.y / 2.0f)));
             
-	    printf("yOverlap: %.2f\n", yOverlap);
+	    //printf("yOverlap: %.2f\n", yOverlap);
             // STEP 3: "Unclip" ourselves from the other entity, and zero our
             //         vertical velocity.
-            if (mVelocity.y > 0) 
+            if (collidableEntity->mEntityType == GOAL) // hit the goal
             {
-                mPosition.y -= yOverlap;
-                mVelocity.y  = 0;
-                mIsCollidingBottom = true;
-            } else if (mVelocity.y < 0) 
-            {
-                mPosition.y += yOverlap;
-                mVelocity.y  = 0;
-                mIsCollidingTop = true;
+                if ((sqrt(mVelocity.x * mVelocity.x + mVelocity.y * mVelocity.y) < 22) && (mAngle < 10 || mAngle < -10)) {
+                    mAcceleration.x = 0;
+                    mAcceleration.y = 0;
 
-                if (collidableEntity->mEntityType == GOAL) // hit the goal
-                {
-                    //win condition 
                     // stop game 
                     //display win
                     isDone = true;
                 }
-
-                if (collidableEntity->mEntityType == RIDGE) // hit the wall
-                {
+                else {
                     mSpriteState = BAD;
                     // stop game
                     // display loss
                     isDone = true;
                 }
             }
+
+            else if (collidableEntity->mEntityType == RIDGE) // hit the wall
+            {
+                mSpriteState = BAD;
+             // stop game
+             // display loss
+                isDone = true;
+            }
+            else if (collidableEntity->mEntityType == PLAYER) // hit the wall
+            {
+                collidableEntity->mSpriteState = BAD;
+                // stop game
+                // display loss
+                isDone = true;
+                collidableEntity->isDone = true;
+            }
+
+        
         }
     }
 }
@@ -120,36 +128,40 @@ void Entity::checkCollisionX(Entity *collidableEntities, int collisionCheckCount
     {
         Entity *collidableEntity = &collidableEntities[i];
         
+
         if (isColliding(collidableEntity))
-        {            
-            // When standing on a platform, we're always slightly overlapping
-            // it vertically due to gravity, which causes false horizontal
-            // collision detections. So the solution I dound is only resolve X
-            // collisions if there's significant Y overlap, preventing the 
-            // platform we're standing on from acting like a wall.
-            float yDistance = fabs(mPosition.y - collidableEntity->mPosition.y);
-            float yOverlap  = fabs(yDistance - (mColliderDimensions.y / 2.0f) - (collidableEntity->mColliderDimensions.y / 2.0f));
+        {
+            if (collidableEntity->mEntityType == GOAL) // hit the goal
+            {
+                //win condition 
+                mAcceleration.x = 0;
+                mAcceleration.y = 0;
 
-            // Skip if barely touching vertically (standing on platform)
-            if (yOverlap < Y_COLLISION_THRESHOLD) continue;
+                // stop game 
+                //display win
+                isDone = true;
+                mWasJumping = false;
+            }
 
-            float xDistance = fabs(mPosition.x - collidableEntity->mPosition.x);
-            float xOverlap  = fabs(xDistance - (mColliderDimensions.x / 2.0f) - (collidableEntity->mColliderDimensions.x / 2.0f));
-
-            if (mVelocity.x > 0) {
-                mPosition.x     -= xOverlap;
-                mVelocity.x      = 0;
-
-                // Collision!
-                mIsCollidingRight = true;
-            } else if (mVelocity.x < 0) {
-                mPosition.x    += xOverlap;
-                mVelocity.x     = 0;
- 
-                // Collision!
-                mIsCollidingLeft = true;
+            else if (collidableEntity->mEntityType == RIDGE) // hit the wall
+            {
+                mSpriteState = BAD;
+                // stop game
+                // display loss
+                isDone = true;
+                mWasJumping = false;
+            }
+            else if (collidableEntity->mEntityType == PLAYER) // hit the wall
+            {
+                collidableEntity->mSpriteState = BAD;
+                // stop game
+                // display loss
+                isDone = true;
+                mWasJumping = false;
+                collidableEntity->isDone = true;
             }
         }
+        
     }
 }
 
@@ -166,6 +178,17 @@ void Entity::checkCollisionX(Entity *collidableEntities, int collisionCheckCount
 bool Entity::isColliding(Entity *other) const 
 {
     //if (!other->isActive()) return false;
+    if (other->mAngle == 90.f) {
+
+        float xDistance = fabs(mPosition.x - other->getPosition().x) -
+            ((mColliderDimensions.x + other->getColliderDimensions().y - 10.f) / 2.0f);
+        float yDistance = fabs(mPosition.y - other->getPosition().y) -
+            ((mColliderDimensions.y + other->getColliderDimensions().x) / 2.0f);
+
+        if (xDistance < 0.0f && yDistance < 0.0f) return true;
+
+        return false;
+    }
 
     float xDistance = fabs(mPosition.x - other->getPosition().x) - 
         ((mColliderDimensions.x + other->getColliderDimensions().x) / 2.0f);
@@ -220,12 +243,41 @@ void Entity::displayCollider()
     );
 }
 
+void Entity::updateFire(Entity* alienShip) {
+    mAngle = alienShip->mAngle;
+    mPosition.x = alienShip->mPosition.x + 50.f * -sin((mAngle * PI / 180) ); // float is distance between the origins of the fire and ship
+    mPosition.y = alienShip->mPosition.y + 50.f * cos(mAngle * PI / 180);
+    return;
+}
+
+
 void Entity::update(float deltaTime, Entity *collidableEntities, 
     int collisionCheckCount, Entity* blocks, int blockCount)
 {
+
     //if(mEntityStatus == INACTIVE) return;
+    if (isDone) {
+        return;
+    }
+
+    if (mEntityType == FIRE) {
+        updateFire(collidableEntities);
+        return;
+    }
 
     if (mEntityType == RIDGE || mEntityType == GOAL) {
+        return;
+    }
+
+    if (mEntityType == ASTEROID) {
+        if (!isDone && !collidableEntities->isDone) {
+            mAngle += 2;
+            mPosition.x -= 2.f;
+            if (mPosition.x <= 0.f)
+                mPosition.x = 1920.f;
+            checkCollisionY(collidableEntities, 1);
+            checkCollisionX(collidableEntities, 1);
+        }
         return;
     }
 
@@ -233,12 +285,13 @@ void Entity::update(float deltaTime, Entity *collidableEntities,
 
     //mVelocity.x = mMovement.x * mSpeed;
 
-
+    
     // ––––– JUMPING ––––– //
-    if (mIsJumping)
+    if (mIsJumping && fuel > 0.025)
     {
         // STEP 1: Immediately return the flag to its original false state
         mIsJumping = false;
+        mWasJumping = true;
         
         // fix angle although this should probably be done elsewhere oh well
         // keeps angle from -180 to 180
@@ -254,11 +307,18 @@ void Entity::update(float deltaTime, Entity *collidableEntities,
         } else if (mAngle > 0.f && mAngle < 90.f) {
             mAcceleration.x += mJumpingPower * sin(mAngle * PI / 180);
             mAcceleration.y -= mJumpingPower * cos(mAngle * PI / 180);
+            if (mAcceleration.y >= 1500)
+                mAcceleration.y -= 20.f;
         } else if (mAngle == 90.f) {
             mAcceleration.x += mJumpingPower;
+            if (mAcceleration.y >= 1500)
+                mAcceleration.y -= 20.f;
         } else if (mAngle < 0.f && mAngle >= -90.f) {
             mAcceleration.x += mJumpingPower * sin(mAngle * PI / 180);
             mAcceleration.y -= mJumpingPower * cos(mAngle * PI / 180);
+            if (mAcceleration.y >= 1500)
+                mAcceleration.y -= 20.f;
+            
         } else if (mAngle >= -180.f && mAngle < -90.f) {
             mAcceleration.x += mJumpingPower * sin(mAngle * PI / 180);
             mAcceleration.y -= mJumpingPower * cos(mAngle * PI / 180);
@@ -266,11 +326,18 @@ void Entity::update(float deltaTime, Entity *collidableEntities,
             mAcceleration.x += mJumpingPower * sin(mAngle * PI / 180);
             mAcceleration.y -= mJumpingPower * cos(mAngle * PI / 180);
         }
+        
+        //printf("%.6f\n", mAngle);
+        //if (mAcceleration.y > 1500 && (mAngle < 90.f || mAngle > -90.f)) { // jumping while accelerating down still
+        //    //printf("%.6f\n", mAcceleration.y);
+        //    mAcceleration.y -= 20;
+        //}
         //printf("%.6f\n", mAngle);
         // use up fuel
     }
     else { // adjust acceleration if there is no jump
         //printf("no jump\n");
+        mWasJumping = false;
         if (mAcceleration.x > 1.5f) {
             mAcceleration.x -= 1.5f;
         } else if ( mAcceleration.x < -1.5f) { // air resistance
@@ -279,13 +346,13 @@ void Entity::update(float deltaTime, Entity *collidableEntities,
         else if (mAcceleration.x < 1.5f || mAcceleration.x > -1.5f){ // acceleration is approx zero
             mAcceleration.x = 0;
         }
-        if (mAcceleration.y < 1200) { // 900 being the planet gravity
+        if (mAcceleration.y < 1500) { // 900 being the planet gravity
             mAcceleration.y += 50.f; // every update you are not boosting you gain 30 negative acceleration
-            if (mAcceleration.y > 1200) { // if it accidentally overcorects
-                mAcceleration.y = 1200;
+            if (mAcceleration.y > 1500) { // if it accidentally overcorects
+                mAcceleration.y = 1500;
             }
         }
-        else if (mAcceleration.y > 1200) {
+        else if (mAcceleration.y > 1500) {
             mAcceleration.y -= 20.f; // past terminal velocity
         }
     }
@@ -304,6 +371,12 @@ void Entity::update(float deltaTime, Entity *collidableEntities,
     mPosition.x += mVelocity.x * deltaTime;
     checkCollisionX(collidableEntities, collisionCheckCount);
     checkCollisionX(blocks, blockCount);
+
+    if (mPosition.y < -50.f || mPosition.x < -50.f || mPosition.x > 1970.f) {
+        isDone = true;
+        isGone = true;
+        mSpriteState = BAD;
+    }
 
     //if (mTextureType == ATLAS && GetLength(mMovement) != 0 && mIsCollidingBottom) 
     //    animate(deltaTime);
@@ -340,11 +413,24 @@ void Entity::render()
                 };
             }
             break;
+        case ASTEROID:
+            // Top Left
+            
+                textureArea = {
+                // top-left corner
+                190.f,
+                190.f,
+
+                // bottom-right corner (of texture)
+                168.f,
+                168.f
+            };
+            break;
         case FIRE:
             textureArea = {
                 static_cast<float>(mTexture.width / 2),
                 0.f,
-                static_cast<float>(mTexture.width ),
+                static_cast<float>(mTexture.width ) / 2,
                 static_cast<float>(mTexture.height / 2),
             };
             break;
@@ -374,11 +460,15 @@ void Entity::render()
     };
 
     // Render the texture on screen
+    
+    Color renderColor = WHITE;
+    if (mEntityType == GOAL)
+        renderColor = GREEN;
     DrawTexturePro(
         mTexture, 
         textureArea, destinationArea, originOffset,
-        mAngle, WHITE
+        mAngle, renderColor
     );
 
-    displayCollider();
+    //displayCollider();
 }

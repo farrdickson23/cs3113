@@ -1,7 +1,9 @@
-#include "LevelB.h"
+
 
 #ifndef STARTSCREEN
 #define STARTSCREEN
+#include "Scene.h" // use the header guards (i think im using that term right) correctly
+#include "Map.h"
 
 class StartScreen : public Scene {
 private:

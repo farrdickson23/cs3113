@@ -7,17 +7,24 @@ LevelB::~LevelB() { shutdown(); }
 
 void LevelB::initialise()
 {
-   mGameState.bgm = LoadMusicStream("assets/game/04 - Silent Forest.wav");
-   SetMusicVolume(mGameState.bgm, 0.33f);
-   // PlayMusicStream(gState.bgm);
 
-   mGameState.jumpSound = LoadSound("assets/game/Dirt Jump.wav");
+    mGameState.nextSceneID = -1;
+    mGameState.bgm = LoadMusicStream("assets/game/Semi Modular NYE - Joe Esposito.wav");
+    SetMusicVolume(mGameState.bgm, 0.33f);
+    PlayMusicStream(mGameState.bgm);
+
+    mGameState.jumpSound = LoadSound("assets/game/ninjaJump.wav");
+    mGameState.ouchSound = LoadSound("assets/game/hurt.wav");
+    mGameState.punchSound = LoadSound("assets/game/punch.wav");
+    mGameState.loseSound = LoadSound("assets/game/lose.wav");
+    mGameState.endScreenTimer = 5.f;
+
 
    /*
       ----------- MAP -----------
    */
    mGameState.map = new Map(
-      LEVEL_WIDTH, LEVEL_HEIGHT,   // map grid cols & rows
+      LEVELB_WIDTH, LEVELB_HEIGHT,   // map grid cols & rows
       (unsigned int *) mLevelData, // grid data
       "assets/game/tileset.png",   // texture filepath
       TILE_DIMENSION,              // tile size
@@ -40,8 +47,8 @@ void LevelB::initialise()
 
    // Assets from @see https://sscary.itch.io/the-adventurer-female
    mGameState.ninja = new Entity(
-      {mOrigin.x - 300.0f, mOrigin.y - 200.0f}, // position
-      {250.0f * sizeRatio, 250.0f},             // scale
+      {mOrigin.x - 600.0f, mOrigin.y + 200.0f}, // position
+      {150.0f * sizeRatio, 150.0f},             // scale
       "assets/game/mc.png",                   // texture file address
       ATLAS,                                    // single image or atlas?
       { 6, 6 },                                 // atlas dimensions
@@ -49,54 +56,165 @@ void LevelB::initialise()
       PLAYER                                    // entity type
    );
 
-   mGameState.ninja->setJumpingPower(550.0f);
-   mGameState.ninja->setColliderDimensions({
-      mGameState.ninja->getScale().x / 3.5f,
-      mGameState.ninja->getScale().y / 3.0f
-   });
-   mGameState.ninja->setAcceleration({0.0f, ACCELERATION_OF_GRAVITY});
+    mGameState.ninja->setJumpingPower(550.0f);
+    mGameState.ninja->setColliderDimensions({
+      mGameState.ninja->getScale().x / 3.f,
+      mGameState.ninja->getScale().y / 1.1f
+    });
+    mGameState.ninja->setAcceleration({0.0f, ACCELERATION_OF_GRAVITY});
 
    /*
       ----------- CAMERA -----------
    */
-   mGameState.camera = { 0 };                                    // zero initialize
-   mGameState.camera.target = mGameState.ninja->getPosition(); // camera follows player
-   mGameState.camera.offset = mOrigin;                           // camera offset to center of screen
-   mGameState.camera.rotation = 0.0f;                            // no rotation
-   mGameState.camera.zoom = 1.0f;                                // default zoom
+    mGameState.camera = { 0 };                                    // zero initialize
+    mGameState.camera.target = mGameState.ninja->getPosition(); // camera follows player
+    mGameState.camera.offset = mOrigin;                           // camera offset to center of screen
+    mGameState.camera.rotation = 0.0f;                            // no rotation
+    mGameState.camera.zoom = 1.0f;                                // default zoom
+
+    // npc
+
+    std::map<Direction, std::vector<int>> monsterAnimationAtlas = {
+     {IDLE,  {  0, 1, 2 }},
+     {RIGHT,  {  0, 1, 2 }},
+     {LEFT,  {  0, 1, 2 }},
+     {DDEAD, { 3 }}
+    };
+
+    mGameState.monster1 = new Entity(
+        { mOrigin.x -150.f , mOrigin.y - 200.0f }, // position
+        { 150.0f * sizeRatio, 150.0f },             // scale
+        "assets/game/demon.png",                   // texture file address
+        ATLAS,                                    // single image or atlas?
+        { 1, 4 },                                 // atlas dimensions
+        monsterAnimationAtlas,                    // actual atlas
+        NPC                                    // entity type
+    );
+    mGameState.monster1->setColliderDimensions({
+       mGameState.monster1->getScale().x / 1.1f,
+       mGameState.monster1->getScale().y / 1.1f
+        });
+    mGameState.monster1->setAcceleration({ 0.0f, 0.f });
+
+    mGameState.monster1->setAIType(FLYING);
+    //mGameState.monster1->setAIState(SFLYING);
+    //set bounds for flying 
+    float maxHeight = mGameState.monster1->getPosition().y;
+    mGameState.monster1->setFlyingRange( maxHeight + 420.0f, maxHeight - 100.f );
+
+    mGameState.monster1->setSpeed(Entity::DEFAULT_SPEED / 3); // the monster is going to fast
+
+    mGameState.monster2 = new Entity(
+        { mOrigin.x + 70.f, mOrigin.y + 200.0f }, // position
+        { 150.0f * sizeRatio, 150.0f },             // scale
+        "assets/game/demon.png",                   // texture file address
+        ATLAS,                                    // single image or atlas?
+        { 1, 4 },                                 // atlas dimensions
+        monsterAnimationAtlas,                    // actual atlas
+        NPC                                    // entity type
+    );
+    mGameState.monster2->setColliderDimensions({
+       mGameState.monster2->getScale().x / 1.1f,
+       mGameState.monster2->getScale().y / 1.1f
+        });
+    mGameState.monster2->setAcceleration({ 0.0f, 0.f });
+
+    mGameState.monster2->setAIType(FLYING);
+    //mGameState.monster2->setAIState(SFLYING);
+    mGameState.monster2->setFlyingRange(maxHeight + 420.0f, maxHeight - 100.f);
+
+    mGameState.monster2->setSpeed(Entity::DEFAULT_SPEED / 3); // the monster is going to fast
+    mGameState.ninja->setFrameSpeed(3);
 }
 
 void LevelB::update(float deltaTime)
 {
-   UpdateMusicStream(mGameState.bgm);
+    UpdateMusicStream(mGameState.bgm);
+    if (mPlayerLost)
+    {
+        mGameState.endScreenTimer -= deltaTime;
 
-   mGameState.ninja->update(
-      deltaTime,      // delta time / fixed timestep
-      nullptr,        // player
-      mGameState.map, // map
-      nullptr,        // collidable entities
-      0               // col. entity count
-   );
+        if (mGameState.endScreenTimer <= 0.0f)
+            mGameState.nextSceneID = 0;  // back to start screen
+
+        return;
+    }
+
+    mGameState.ninja->update(
+       deltaTime,      // delta time / fixed timestep
+       nullptr,        // player
+       mGameState.map, // map
+       nullptr,        // collidable entities
+       0               // col. entity count
+    );
+
+    mGameState.monster1->update(
+        deltaTime,      // delta time / fixed timestep
+        mGameState.ninja,        // player
+        mGameState.map, // map
+        nullptr,        // collidable entities
+        0               // col. entity count
+    );
+
+    mGameState.monster2->update(
+        deltaTime,      // delta time / fixed timestep
+        mGameState.ninja,        // player
+        mGameState.map, // map
+        nullptr,        // collidable entities
+        0               // col. entity count
+    );
+
+    if ((mGameState.ninja->isColliding(mGameState.monster1)) || (mGameState.ninja->isColliding(mGameState.monster2))) // i dont remember why we had this private but hopefully this isn't too big of an issue oh whale
+    {
+        mGameState.lives = mGameState.lives - 1;
+
+        //std::cout << "HIT! lives = " << mGameState.lives
+        //    << "  nextSceneID(before) = " << mGameState.nextSceneID << std::endl;
+
+        if (mGameState.lives > 0) { // reset the level
+            mGameState.nextSceneID = 2;
+            PlaySound(mGameState.ouchSound);
+        }
+        else // go to you lose
+        {
+            mPlayerLost = true;
+            PlaySound(mGameState.loseSound);
+        }
+        //std::cout << "after set: nextSceneID = " << mGameState.nextSceneID << std::endl;
+    }
 
    // CAMERA
-   Vector2 currentPlayerPosition = { mGameState.ninja->getPosition().x, mOrigin.y };
+    Vector2 currentPlayerPosition = mGameState.ninja->getPosition();// update this because i want more camera verticality
 
-   panCamera(&mGameState.camera, &currentPlayerPosition);
+    if (mGameState.ninja->getPosition().y > 800.0f) mGameState.nextSceneID = 3;
+
+    panCamera(&mGameState.camera, &currentPlayerPosition);
 }
 
 void LevelB::render()
 {
-   ClearBackground(ColorFromHex(mBGColourHexCode));
 
-   mGameState.ninja->render();
-   mGameState.map->render();
+    ClearBackground(ColorFromHex(mBGColourHexCode));
+
+    mGameState.ninja->render();
+    mGameState.monster1->render();
+    mGameState.monster2->render();
+    mGameState.map->render();
+
+    if (mPlayerLost)
+        DrawText("YOU LOSE BOZO!!", mGameState.ninja->getPosition().x, mGameState.ninja->getPosition().y + 30, 40, RED);
 }
 
 void LevelB::shutdown()
 {
-   delete mGameState.ninja;
-   delete mGameState.map;
+    delete mGameState.ninja;
+    delete mGameState.map;
+    delete mGameState.monster1;
+    delete mGameState.monster2;
 
-   UnloadMusicStream(mGameState.bgm);
-   UnloadSound(mGameState.jumpSound);
+    UnloadMusicStream(mGameState.bgm);
+    UnloadSound(mGameState.jumpSound);
+    UnloadSound(mGameState.loseSound);
+    UnloadSound(mGameState.punchSound);
+    UnloadSound(mGameState.ouchSound);
 }

@@ -1,19 +1,27 @@
-#include "LevelA.h"
 
 #ifndef LEVELB_H
 #define LEVELB_H
 
+#include "Scene.h" // use the header guards (i think im using that term right) correctly
+#include "Map.h"
+
 class LevelB : public Scene {
 private:
-    unsigned int mLevelData[LEVEL_WIDTH * LEVEL_HEIGHT] = {
+    static constexpr int LEVELB_WIDTH = 20; // maybe this will fix some weirdness with the map loading
+    static constexpr int LEVELB_HEIGHT = 11;
+
+    unsigned int mLevelData[LEVELB_WIDTH * LEVELB_HEIGHT] = {
         5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
         5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
         5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
-        5, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5,
-        5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 5,
-        5, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 5,
-        5, 2, 2, 2, 0, 0, 0, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 5,
-        5, 2, 2, 2, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 5
+        5, 0, 0, 0, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0, 0, 0, 0, 0, 5,
+        5, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 5,
+        5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 5,
+        5, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 5,
+        5, 0, 3, 3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 3, 0, 0, 3, 3, 0, 5,
+        5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 5,
+        5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 5,
+        5, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 5
     };
 
 public:

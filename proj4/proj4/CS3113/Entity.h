@@ -3,11 +3,11 @@
 
 #include "Map.h"
 
-enum Direction    { LEFT, PLEFT, RIGHT, PRIGHT, IDLE   }; // For walking
+enum Direction    { LEFT, PLEFT, RIGHT, PRIGHT, IDLE, DDEAD  }; // For walking
 enum EntityStatus { ACTIVE, INACTIVE                   };
 enum EntityType   { PLAYER, BLOCK, PLATFORM, NPC, NONE };
-enum AIType       { WANDERER, FLYING, BOUNCER, BOSS    };
-enum AIState      { WALKING, SIDLE, FOLLOWING, BOUNCING, PUNCH, DEAD, NORM};
+enum AIType       { WANDERER, FLYING, BOUNCER, BOSS, FOLLOWER    };
+enum AIState      { WALKING, SFLYING, SIDLE, FOLLOWING, BOUNCING, PUNCHL, DEAD, NORM, PUNCHR};
 
 class Entity
 {
@@ -29,6 +29,12 @@ private:
     Direction mDirection;
     int mFrameSpeed;
 
+    // these are new for my flying AI
+    int mFlyingMax;
+    int mFlyingMin;
+    bool mFlyingDown = true;
+    // end of flying tings
+
     int mCurrentFrameIndex = 0;
     float mAnimationTime = 0.0f;
 
@@ -49,7 +55,7 @@ private:
     AIType  mAIType;
     AIState mAIState;
 
-    bool isColliding(Entity *other) const;
+    //bool isColliding(Entity *other) const; // we can make this public right? RIGHT??
 
     void checkCollisionY(Entity *collidableEntities, int collisionCheckCount);
     void checkCollisionY(Map *map);
@@ -68,9 +74,10 @@ private:
     void animate(float deltaTime);
     void AIActivate(Entity *target);
     void AIWander();
+    void AIFollow(Entity* target);
     void AIBounce();
     void AIFly();
-    void AIDie() { mAIState = DEAD; }
+    void AIDie() { mAIState = DEAD; } // i dont think i ever used this oh well
 
 public:
     static constexpr int   DEFAULT_SIZE          = 250;
@@ -106,12 +113,14 @@ public:
 
     void resetMovement() { mMovement = { 0.0f, 0.0f }; }
 
+    bool isColliding(Entity* other) const;
+
     Vector2     getPosition()              const { return mPosition;              }
     Vector2     getMovement()              const { return mMovement;              }
     Vector2     getVelocity()              const { return mVelocity;              }
     Vector2     getAcceleration()          const { return mAcceleration;          }
     Vector2     getScale()                 const { return mScale;                 }
-    Vector2     getColliderDimensions()    const { return mScale;                 }
+    Vector2     getColliderDimensions()    const { return mColliderDimensions;    } // bruh
     Vector2     getSpriteSheetDimensions() const { return mSpriteSheetDimensions; }
     Texture2D   getTexture()               const { return mTexture;               }
     TextureType getTextureType()           const { return mTextureType;           }
@@ -155,12 +164,19 @@ public:
         { mAngle = newAngle;                       }
     void setEntityType(EntityType entityType)
         { mEntityType = entityType;                }
-    void setDirection(Direction newDirection)
+    void setDirection(Direction newDirection) // shut up i can do this if i want this isnt sterlings class
     { 
         mDirection = newDirection;
 
         if (mTextureType == ATLAS) mAnimationIndices = mAnimationAtlas.at(mDirection);
     }
+    void setFlyingRange(float max, float min) { // and ill do it again
+        mFlyingMax = max; mFlyingMin = min;}
+
+    void isDying() { // and ill do it again // this will only ever be used for the boss and is a terrible temporary fix
+        mCurrentFrameIndex = 4; mAnimationTime = 0.f;
+    } // start of the dead animation for boss
+
     void setAIState(AIState newState)
         { mAIState = newState;                     }
     void setAIType(AIType newType)

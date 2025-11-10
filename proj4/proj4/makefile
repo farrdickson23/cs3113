@@ -18,6 +18,8 @@ TARGET = raylib_app
 # ------------------------------------------------------------
 CXX      = g++
 CXXFLAGS = -std=c++11
+CXXFLAGS = -Wall -Wextra -g -O0
+
 
 # ------------------------------------------------------------
 #  Raylib configuration (pkg‑config works on macOS too)

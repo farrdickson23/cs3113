@@ -1,4 +1,7 @@
-//#include "CS3113/LevelB.h"
+#include "CS3113/LevelA.h"
+#include "CS3113/LevelB.h"
+#include "CS3113/LevelC.h"
+#include "CS3113/BossLevel.h"
 #include "CS3113/StartScreen.h"
 // Global Constants
 constexpr int SCREEN_WIDTH     = 1000,
@@ -21,6 +24,8 @@ std::vector<Scene*> gLevels = {};
 StartScreen *gLevelStart = nullptr;
 LevelA *gLevelA = nullptr;
 LevelB *gLevelB = nullptr;
+LevelC* gLevelC = nullptr;
+BossLevel* gBLevel = nullptr;
 
 // Function Declarations
 void switchToScene(Scene *scene);
@@ -43,11 +48,15 @@ void initialise()
 
     gLevelStart = new StartScreen(ORIGIN, "#D12E0F");
     gLevelA = new LevelA(ORIGIN, "#011627");
-    gLevelB = new LevelB(ORIGIN, "#C0897E");
+    gLevelB = new LevelB(ORIGIN, "#AE3018");
+    gLevelC = new LevelC(ORIGIN, "#52186C");
+    gBLevel = new BossLevel(ORIGIN, "#1F1B21");
 
     gLevels.push_back(gLevelStart);
     gLevels.push_back(gLevelA);
     gLevels.push_back(gLevelB);
+    gLevels.push_back(gLevelC);
+    gLevels.push_back(gBLevel);
 
     switchToScene(gLevels[0]);
 
@@ -57,13 +66,14 @@ void initialise()
 void processInput() 
 {
     if (gCurrentScene->getType() == START) {
-        if (IsKeyPressed(KEY_L)) {
+        if (IsKeyPressed(KEY_ENTER)) {
             gCurrentScene->setType();
+            gCurrentScene->getState().lives = 3;
         }
         if (IsKeyPressed(27) || WindowShouldClose()) gAppStatus = TERMINATED;
         return;
     }
-    if (gCurrentScene->getState().ninja->getAIState() == PUNCH) {
+    if (gCurrentScene->getState().ninja->getAIState() == PUNCHR || gCurrentScene->getState().ninja->getAIState() == PUNCHL) {
         if (IsKeyPressed(27) || WindowShouldClose()) gAppStatus = TERMINATED;
         return;
     }
@@ -71,20 +81,28 @@ void processInput()
     gCurrentScene->getState().ninja->resetMovement();
 
     if (IsKeyPressed(KEY_E)) {
-        gCurrentScene->getState().ninja->setAIState(PUNCH);
+        gCurrentScene->getState().ninja->setAIState(PUNCHR);
         gCurrentScene->getState().ninja->attackRight();
+        PlaySound(gCurrentScene->getState().punchSound);
         if (IsKeyPressed(27) || WindowShouldClose()) gAppStatus = TERMINATED;
         return;
     } 
     if (IsKeyPressed(KEY_Q)) {
-        gCurrentScene->getState().ninja->setAIState(PUNCH);
+        gCurrentScene->getState().ninja->setAIState(PUNCHL);
         gCurrentScene->getState().ninja->attackLeft();
+        PlaySound(gCurrentScene->getState().punchSound);
         if (IsKeyPressed(27) || WindowShouldClose()) gAppStatus = TERMINATED;
         return;
     }
 
-    if      (IsKeyDown(KEY_A)) gCurrentScene->getState().ninja->moveLeft();
-    else if (IsKeyDown(KEY_D)) gCurrentScene->getState().ninja->moveRight(); 
+    if (IsKeyDown(KEY_A)) { 
+        gCurrentScene->getState().ninja->moveLeft(); 
+        //printf("Key A Press\n");
+    }
+    else if (IsKeyDown(KEY_D)) { 
+        gCurrentScene->getState().ninja->moveRight(); 
+        //printf("Key D Press\n");
+    }
 
     if (IsKeyPressed(KEY_W) && 
         gCurrentScene->getState().ninja->isCollidingBottom())
@@ -136,6 +154,8 @@ void shutdown()
     delete gLevelStart;
     delete gLevelA;
     delete gLevelB;
+    delete gLevelC;
+    delete gBLevel;
 
     for (int i = 0; i < NUMBER_OF_LEVELS; i++) gLevels[i] = nullptr;
 
@@ -151,11 +171,17 @@ int main(void)
     {
         processInput();
         update();
-
-        if (gCurrentScene->getState().nextSceneID > 0)
+        // this scene switching stuff is really confisuing me i think this fix should help
+        int next = gCurrentScene->getState().nextSceneID;
+        if (next >= 0) // start screen was 0 for me so yyes // i also should handle lives count here 
         {
-            int id = gCurrentScene->getState().nextSceneID;
-            switchToScene(gLevels[id]);
+            int lives = gCurrentScene->getState().lives;
+            switchToScene(gLevels[next]);
+            // int id = gCurrentScene->getState().nextSceneID; // idt i need this
+            // switchToScene(gLevels[id]); // naur
+            gCurrentScene->getState().lives = lives;
+
+            gCurrentScene->getState().nextSceneID = -1;
         }
 
         render();

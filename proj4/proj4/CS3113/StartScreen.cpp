@@ -7,11 +7,15 @@ StartScreen::~StartScreen() { shutdown(); }
 
 void StartScreen::initialise()
 {
-    mGameState.bgm = LoadMusicStream("assets/game/04 - Silent Forest.wav");
+    mGameState.bgm = LoadMusicStream("assets/game/Semi Modular NYE - Joe Esposito.wav");
     SetMusicVolume(mGameState.bgm, 0.33f);
-    // PlayMusicStream(gState.bgm);
+    PlayMusicStream(mGameState.bgm);
 
-    mGameState.jumpSound = LoadSound("assets/game/Dirt Jump.wav");
+    //mGameState.jumpSound = LoadSound("assets/game/Dirt Jump.wav");
+    mGameState.lives = 3;
+    mPlayerWon = false;
+    mPlayerLost = false;
+
 
     /*
        ----------- MAP -----------
@@ -91,7 +95,7 @@ void StartScreen::render()
     mGameState.ninja->render();
     //printf("Pos%f\n", mGameState.ninja->getPosition());
 
-    DrawText("PRESS L TO START", 5, -50, 40, PURPLE);
+    DrawText("PRESS ENTER TO START\n  PUNCH L,R -> Q,E", -25, -50, 40, DARKPURPLE);
 
     //mGameState.map->render();
 }
@@ -102,5 +106,5 @@ void StartScreen::shutdown()
     delete mGameState.map;
 
     UnloadMusicStream(mGameState.bgm);
-    UnloadSound(mGameState.jumpSound);
+    //UnloadSound(mGameState.jumpSound);
 }

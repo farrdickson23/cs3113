@@ -1,4 +1,5 @@
 #include "Entity.h"
+#include <stdlib.h>
 
 Entity::Entity() : mPosition {0.0f, 0.0f}, mMovement {0.0f, 0.0f}, 
                    mVelocity {0.0f, 0.0f}, mAcceleration {0.0f, 0.0f},
@@ -61,7 +62,7 @@ void Entity::checkCollisionY(Entity *collidableEntities, int collisionCheckCount
                 mIsCollidingTop = true;
 
                 if (collidableEntity->mEntityType == NPC) {
-                    if (collidableEntity->mAIType == BOSS || collidableEntity->mAIType == BOUNCER) {
+                    if (collidableEntity->mAIType == BOSS || collidableEntity->mAIType == BOUNCER) { // i was going to do something with this but oh well not anymore
                         //reset player position in level,
                         //lose one health
                         return;
@@ -194,6 +195,7 @@ bool Entity::isColliding(Entity *other) const
     return false;
 }
 
+/*
 void Entity::animate(float deltaTime)
 {
     mAnimationIndices = mAnimationAtlas.at(mDirection);
@@ -212,15 +214,99 @@ void Entity::animate(float deltaTime)
         }
         mCurrentFrameIndex %= mAnimationIndices.size();
     }
+}*/
+void Entity::animate(float deltaTime)
+{
+    //mAnimationIndices = mAnimationAtlas.at(mDirection);
+    auto it = mAnimationAtlas.find(mDirection); // I replaced the above with it because this was causing crashes when I had sprites without idle animations which I could fix
+                                                // but this seems like a good guard to have anyway
+    if (it == mAnimationAtlas.end() || it->second.empty()) {
+        // no animation defined for this direction or no frames
+        return;
+    }
+
+    mAnimationIndices = it->second; // since im using auto it will get the pair not the indexs so now im making sure were looking at the indicies
+
+    // make sure index is in range
+    if (mCurrentFrameIndex >= static_cast<int>(mAnimationIndices.size())) {
+        mCurrentFrameIndex = 0;
+    }
+
+    mAnimationTime += deltaTime;
+
+    if (mFrameSpeed <= 0.0f) return; // avoid divide-by-zero
+
+    float framesPerSecond = 1.0f / mFrameSpeed;
+
+    if (mAnimationTime >= framesPerSecond)
+    {
+        mAnimationTime = 0.0f;
+        if (mDirection == DDEAD)
+        {
+            if (mCurrentFrameIndex + 1 < static_cast<int>(mAnimationIndices.size()))
+            {
+                mCurrentFrameIndex = mCurrentFrameIndex +1;  // advance
+            }
+            // else: already at last frame, stay there
+            return;
+        }
+        mCurrentFrameIndex++;
+
+        if (mCurrentFrameIndex == static_cast<int>(mAnimationIndices.size()) &&
+            (mAIState == PUNCHL || mAIState == PUNCHR))
+        {
+            mAIState = NORM;
+            //printf("through\n");
+        }
+
+        mCurrentFrameIndex %= static_cast<int>(mAnimationIndices.size());
+    }
 }
 
+
 void Entity::AIWander() { moveLeft(); }
-/*
+
+void Entity::AIBounce() {
+    if (isCollidingBottom()) {
+        jump();
+        // float angle = rand() % 180 - 90; // i need to stop using trig for all of my projects its too confusing
+        // mVelocity.x = cos(angle);
+    }
+    if (mIsCollidingLeft) // slime hits something on the left
+        moveRight();
+    else if (mPosition.x > 800.f) // slime checks right hit bruv
+        moveLeft();
+    else if (mMovement.x == 0.f) // when the level starts
+        moveLeft();
+}
+
+void Entity::AIFly() { // i need to fix this
+
+    
+    float top = std::min(mFlyingMax, mFlyingMin);// min is actually the "higher" one i forgot y cordinate lower is higher on screen so top is min
+    float bottom = std::max(mFlyingMax, mFlyingMin); // max is lower one so bottom is max
+
+    if (top == bottom) return; // if there is no range 
+
+  
+    if (mPosition.y <= top) { // we are "less than" the top w cord flip this is higher than the top bound
+        mFlyingDown = true; // start flying down
+    }
+    else if (mPosition.y >= bottom) { // greater than the bottom
+        mFlyingDown = false; // start flying up
+    }
+
+    float flySpeed = static_cast<float>(mSpeed);
+    mVelocity.y = mFlyingDown ? flySpeed : -flySpeed; // using these makes me feel so cool
+}
+
 void Entity::AIFollow(Entity *target)
 {
+    if (!target) return;// make sure there is an actual target to follow
+
     switch (mAIState)
     {
-    case IDLE:
+    case SIDLE:
         if (Vector2Distance(mPosition, target->getPosition()) < 250.0f) 
             mAIState = WALKING;
         break;
@@ -230,12 +316,17 @@ void Entity::AIFollow(Entity *target)
         // Change direction of the enemy
         if (mPosition.x > target->getPosition().x) moveLeft();
         else                                       moveRight();
+        break;
     
+    //case FLYING:
+     //   AIFly();
+     //   break;
+
     default:
         break;
     }
 }
-*/
+
 void Entity::AIActivate(Entity *target)
 {
     switch (mAIType)
@@ -243,11 +334,19 @@ void Entity::AIActivate(Entity *target)
     case WANDERER:
         AIWander();
         break;
-        /*
+        
     case FOLLOWER:
         AIFollow(target);
         break;
-        */
+    
+    case FLYING:
+        AIFly();
+        break;
+
+    case BOUNCER:
+        AIBounce();
+        break;
+
     default:
         break;
     }
@@ -263,6 +362,7 @@ void Entity::update(float deltaTime, Entity *player, Map *map,
     resetColliderFlags();
 
     mVelocity.x = mMovement.x * mSpeed;
+    //mVelocity.y = mMovement.y * mSpeed;
 
     mVelocity.x += mAcceleration.x * deltaTime;
     mVelocity.y += mAcceleration.y * deltaTime;
@@ -285,11 +385,43 @@ void Entity::update(float deltaTime, Entity *player, Map *map,
     checkCollisionX(collidableEntities, collisionCheckCount);
     checkCollisionX(map);
 
-    if (mTextureType == ATLAS && GetLength(mMovement) != 0 && mIsCollidingBottom) 
-        animate(deltaTime/4);
+    /* // update so fliers are animated
+    if (mTextureType == ATLAS && GetLength(mMovement) != 0 && mIsCollidingBottom) {
+        if (mAIState == PUNCHL)
+            mDirection = PLEFT;
+        if (mAIState == PUNCHR)
+            mDirection = PRIGHT;
+        animate(deltaTime);
+    }
     if (mTextureType == ATLAS && GetLength(mMovement) == 0 && mIsCollidingBottom) { // maybe and added if is PLAYER
         mDirection = IDLE;
-        animate(deltaTime/4);
+        if (mAIState == PUNCHL)
+            mDirection = PLEFT;
+        if (mAIState == PUNCHR)
+            mDirection = PRIGHT;
+        animate(deltaTime);
+        */
+
+    if (mTextureType == ATLAS)
+    {
+        bool isPunching = (mAIState == PUNCHL || mAIState == PUNCHR); // this all just so i can only use punch for the boss oh well
+
+        if (isPunching)
+            animate(deltaTime);
+        else if (mDirection == DDEAD)
+            animate(deltaTime);
+        else if (mEntityType == NPC && (mAIType == BOUNCER || mAIType == FLYING)) // to show slime and demon animations
+            animate(deltaTime);
+        // Everyone else (player, ground NPCs): keep old grounded behaviour
+        else if (mIsCollidingBottom) {
+            if (GetLength(mMovement) != 0) {
+                animate(deltaTime);
+            }
+            else {
+                mDirection = IDLE;
+                animate(deltaTime);
+            }
+        }
     }
 
 }
@@ -314,12 +446,28 @@ void Entity::render()
             };
             break;
         case ATLAS:
+	    // SAFETY CHECKS RECOMMENDED BY CHAT GPT
+	    if (mAnimationIndices.empty()) {
+                // Nothing to draw for this entity
+                return;
+            }
+	    if (mCurrentFrameIndex < 0 ||
+                mCurrentFrameIndex >= static_cast<int>(mAnimationIndices.size()))
+            {
+                // Wrap it instead of just forcing to 0, in case it’s large
+                mCurrentFrameIndex %= static_cast<int>(mAnimationIndices.size());
+                if (mCurrentFrameIndex < 0) {
+                    mCurrentFrameIndex += static_cast<int>(mAnimationIndices.size());
+                }
+            }
+	    // PROF SAID I COULD 
             textureArea = getUVRectangle(
                 &mTexture, 
                 mAnimationIndices[mCurrentFrameIndex], 
                 mSpriteSheetDimensions.x, 
                 mSpriteSheetDimensions.y
             );
+	    break; // also suggested by gpt
         
         default: break;
     }

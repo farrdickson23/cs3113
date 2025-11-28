@@ -21,9 +21,16 @@ bool hit = false;
 void LevelA::initialise()
 {
     mGameState.nextSceneID = -1;
-
-    mGameState.bgm = LoadMusicStream("assets/game/04 - Silent Forest.wav");
+    mGameState.bgm = LoadMusicStream("assets/game/Semi Modular NYE - Joe Esposito.wav");
     SetMusicVolume(mGameState.bgm, 0.33f);
+    PlayMusicStream(mGameState.bgm);
+
+    mGameState.jumpSound = LoadSound("assets/game/ninjaJump.wav");
+    mGameState.ouchSound = LoadSound("assets/game/hurt.wav");
+    mGameState.punchSound = LoadSound("assets/game/punch.wav");
+    mGameState.loseSound = LoadSound("assets/game/lose.wav");
+    //mGameState.bgm = LoadMusicStream("assets/game/04 - Silent Forest.wav");
+    //SetMusicVolume(mGameState.bgm, 0.33f);
     // PlayMusicStream(gState.bgm);
 
     mGameState.jumpSound = LoadSound("assets/game/Dirt Jump.wav");
@@ -323,8 +330,10 @@ void LevelA::update(float deltaTime)
    );
    Direction gunDir = mGameState.blaster->getDirection();
    //printf( "pos: %f\n", currentPlayerPosition.x);
-   if ((mGameState.xochitl->counterTime < mGameState.xochitl->dashTime) && !mGameState.xochitl->canDash)
+   if ((mGameState.xochitl->counterTime < mGameState.xochitl->dashTime) && !mGameState.xochitl->canDash) {
        mGameState.xochitl->setSpeed(600);
+       PlaySound(mGameState.jumpSound);
+   }
    else mGameState.xochitl->setSpeed(200);
    if (!mGameState.xochitl->canDash) {
        mGameState.xochitl->counterTime += deltaTime;
@@ -351,6 +360,7 @@ void LevelA::update(float deltaTime)
    else if (mGameState.blaster->wantToShoot()) {
        //printf("bang in update\n");
        mGameState.blaster->tryToShoot(mGameState.bullets);
+       PlaySound(mGameState.punchSound);
        //mGameState.blast1->activate();
    }
 
@@ -403,6 +413,7 @@ void LevelA::update(float deltaTime)
    }
 
    if (hit) {
+       PlaySound(mGameState.ouchSound);
        hit = false;
        trap = true;
        mGameState.lives -= 1;
@@ -410,6 +421,7 @@ void LevelA::update(float deltaTime)
            mGameState.nextSceneID = 1; // to reset // will eventually be 1
        if (mGameState.lives == 0) {
            mGameState.xochitl->youSuck = true;
+           PlaySound(mGameState.loseSound);
            mGameState.nextSceneID = 0;
        }
    }
@@ -492,13 +504,18 @@ void LevelA::shutdown()
        delete mGameState.enemies[i];
 
    //delete mGameState.enemies; 
-   
+   UnloadMusicStream(mGameState.bgm);
+   UnloadSound(mGameState.jumpSound);
+   UnloadSound(mGameState.loseSound);
+   UnloadSound(mGameState.punchSound);
+   UnloadSound(mGameState.ouchSound);
+
 
    for (int i = 0; i < 5; i++)
        delete mGameState.bullets[i];
 
    //delete mGameState.bullets;
 
-   UnloadMusicStream(mGameState.bgm);
-   UnloadSound(mGameState.jumpSound);
+   //UnloadMusicStream(mGameState.bgm);
+   //UnloadSound(mGameState.jumpSound);
 }

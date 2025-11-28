@@ -11,6 +11,7 @@ struct GameState
     Entity* chest1 = nullptr;
     Entity* enemies[5]{};
     Entity* bird = nullptr;
+    bool winner = false;
 
     Vector2 mousePos{};
 
@@ -18,6 +19,10 @@ struct GameState
 
     Music bgm{};
     Sound jumpSound{};
+    //Sound jumpSound;
+    Sound ouchSound{};
+    Sound punchSound{};
+    Sound loseSound{};
 
     Camera2D camera{};
     float lives = 3;

@@ -14,6 +14,15 @@ bool cHit = false;
 float CtimeChange = 0.f;
 void LevelC::initialise()
 {
+    mGameState.bgm = LoadMusicStream("assets/game/Semi Modular NYE - Joe Esposito.wav");
+    SetMusicVolume(mGameState.bgm, 0.33f);
+    PlayMusicStream(mGameState.bgm);
+
+    mGameState.jumpSound = LoadSound("assets/game/ninjaJump.wav");
+    mGameState.ouchSound = LoadSound("assets/game/hurt.wav");
+    mGameState.punchSound = LoadSound("assets/game/punch.wav");
+    mGameState.loseSound = LoadSound("assets/game/lose.wav");
+
     mGameState.nextSceneID = -1;
     endTimer = 10.f;
     CtimeChange = 0.f;
@@ -150,13 +159,13 @@ void LevelC::initialise()
     mGameState.enemies[0] = new Entity(
         bossSpawn,
         { 200.0f, 200.0f },
-        "assets/game/boss.png",   // use a boss sprite if you have one
+        "assets/game/boss.png",   // 
         ATLAS,
-        { 1, 10 },                 // adjust if your boss sheet is different
+        { 1, 10 },                 // 
         bossAnimationAtlas,
         NPC
     );
-    mGameState.enemies[0]->setAIType(FOLLOWER);      // simple chasing boss
+    mGameState.enemies[0]->setAIType(FOLLOWER);      // simple 
     mGameState.enemies[0]->setAIState(FOLLOWING);
     mGameState.enemies[0]->setSpeed(30);
     mGameState.enemies[0]->health = 50;              // tougher than normal
@@ -183,11 +192,11 @@ void LevelC::initialise()
 void LevelC::update(float deltaTime)
 {
     CtimeChange = deltaTime;
-    if (mGameState.enemies[0]->health < 0) {
+    if (mGameState.enemies[0]->health < 0) { // what the hell is happening
         endTimer -= deltaTime;
     }
     if (endTimer < 0) {
-        mGameState.nextSceneID = 0;
+        mGameState.nextSceneID = 4;
     }
     mGameState.xochitl->update(
         deltaTime,
@@ -196,6 +205,10 @@ void LevelC::update(float deltaTime)
         mGameState.enemies,
         1
     );
+    if (!mGameState.enemies[0]->isActive()) { // what the hell is happening x2
+        mGameState.nextSceneID = 4;
+        mGameState.winner = true;
+    }
 
     
     if (mGameState.enemies[0] && mGameState.enemies[0]->isActive()) {
@@ -231,6 +244,7 @@ void LevelC::update(float deltaTime)
     // dash 
     if ((mGameState.xochitl->counterTime < mGameState.xochitl->dashTime) &&
         !mGameState.xochitl->canDash) {
+        PlaySound(mGameState.jumpSound);
         mGameState.xochitl->setSpeed(600);
     }
     else {
@@ -248,7 +262,7 @@ void LevelC::update(float deltaTime)
 
     // Win if  boss dead 
     if (mGameState.enemies[0] && !mGameState.enemies[0]->isActive()) {
-        mGameState.nextSceneID = 0;  // or 1 if you want to go to LevelA
+        mGameState.nextSceneID = 0;  //
     }
 
     Vector2 currentPlayerPosition = mGameState.xochitl->getPosition();
@@ -273,6 +287,7 @@ void LevelC::update(float deltaTime)
     else if (mGameState.blaster->wantToShoot()) {
         //printf("bang in update\n");
         mGameState.blaster->tryToShoot(mGameState.bullets);
+        PlaySound(mGameState.punchSound);
         //mGameState.blast1->activate();
     }
 
@@ -300,12 +315,14 @@ void LevelC::update(float deltaTime)
 
     if (cHit) {
         cHit = false;
+        PlaySound(mGameState.ouchSound);
         mGameState.lives -= 1;
         if (mGameState.lives > 0) {
             mGameState.nextSceneID = 3;   //  reload LevelC
         }
         else {
             mGameState.xochitl->youSuck = true;
+            PlaySound(mGameState.loseSound);
             mGameState.nextSceneID = 0;   // back to title
         }
     }
@@ -345,4 +362,8 @@ void LevelC::shutdown()
 
     UnloadMusicStream(mGameState.bgm);
     UnloadSound(mGameState.jumpSound);
+    UnloadSound(mGameState.loseSound);
+    UnloadSound(mGameState.punchSound);
+    UnloadSound(mGameState.ouchSound);
+
 }

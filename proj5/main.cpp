@@ -13,6 +13,7 @@
 #include "CS3113/LevelB.h"
 #include "CS3113/LevelC.h"
 #include "CS3113/ShaderProgram.h"
+#include "CS3113/Winn.h"
 
 //#define SDLK_LSHIFT                 0x400000e1u
 
@@ -28,6 +29,8 @@ constexpr float FIXED_TIMESTEP = 1.0f / 60.0f;
 
 bool skip = false;
 
+float clockW = 0.f;
+float movingDelta = 0.f;
 int dialogueCounter;
 int currentWeapon = 1;
 
@@ -48,6 +51,7 @@ StartScreen* gLevelStart = nullptr;
 LevelA *gLevelA = nullptr;
 LevelB *gLevelB = nullptr;
 LevelC* gLevelC = nullptr;
+Winn* gLevelW = nullptr;
 
 // Function Declarations
 void switchToScene(Scene *scene);
@@ -169,11 +173,13 @@ void initialise()
     gLevelA = new LevelA(ORIGIN, "#0F1C21");
     gLevelB = new LevelB(ORIGIN, "#011627");
     gLevelC = new LevelC(ORIGIN, "#0F1C21");
+    gLevelW = new Winn(ORIGIN, "#0F1C21");
 
     gLevels.push_back(gLevelStart);
     gLevels.push_back(gLevelA);
     gLevels.push_back(gLevelB);
     gLevels.push_back(gLevelC);
+    gLevels.push_back(gLevelW);
 
     gEffects = new Effects(ORIGIN, SCREEN_WIDTH, SCREEN_HEIGHT);
 
@@ -194,7 +200,10 @@ void processInput()
         }
         return;
     }
-
+    if (IsKeyPressed(KEY_ENTER) && (gCurrentScene == gLevels[4])) {
+        switchToScene(gLevels[0]);   // back to start screen
+        return;
+    }
     if (gCurrentScene->getState().xochitl->youSuck) {
         if (IsKeyPressed(KEY_ENTER)) {
             switchToScene(gLevels[0]);   // back to start screen
@@ -369,7 +378,7 @@ void update()
     gPreviousTicks  = ticks;
 
     deltaTime += gTimeAccumulator;
-
+    movingDelta = deltaTime;
     if (deltaTime < FIXED_TIMESTEP)
     {
         gTimeAccumulator = deltaTime;
@@ -415,15 +424,33 @@ void render()
     gShader.setVector2("lightPosition", gLightPosition);
     gShader.setInt(
         "isDark",
-        gCurrentScene->getState().xochitl->isItDark() ? 1 : 0
+        gCurrentScene->getState().xochitl->isItDark() ? 1 : 0 
     );
     gCurrentScene->render();
 
     gShader.end();
     if (dialogueCounter == 1)
         gEffects->render();
-
+    
     EndMode2D();
+    if (gCurrentScene == gLevels[3]) {
+        int length = static_cast<int>(round(920 * ((gCurrentScene->getState().enemies[0]->health + 1) / 50)));// this isnt working so i think i might just be dumb 
+        DrawRectangle(40, 550, length, 30, GREEN);
+        if (gCurrentScene->getState().winner) {
+            //clockW += movingDelta;
+            if (clockW < 10.f) {
+                //(0, 0, 1000, 600, LIME);
+                //DrawText("WINNER WINNER", 40, 250, 85, BLACK);
+                return;
+            }
+            else {
+                //clockW = 0.f;
+                //switchToScene(gLevels[0]);
+                return;
+            }
+        }
+
+    }
     renderDialogueSwitch();
     EndDrawing();
 }
